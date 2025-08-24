@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }))
 // CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL?.split(',') || ['http://localhost:5173'],
+    origin: process.env.CLIENT_URL?.split(',') || ['http://localhost:5173'] || ['https://petpals-fsd.netlify.app/'], 
     credentials: true,
     exposedHeaders: ['Authorization'],
     allowedHeaders: ['Content-Type', 'Authorization'],
