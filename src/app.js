@@ -12,21 +12,44 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
-app.use(compression())
+// --- CORS FIRST ---
+const rawOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+// sensible defaults for local dev too
+if (!rawOrigins.length) rawOrigins.push('http://localhost:5173')
+
+const allowedOrigins = new Set(rawOrigins)
+// OPTIONAL: allow all Netlify preview subdomains
+const allowRegexes = [/\.netlify\.app$/]
+
+const corsOptions = {
+  origin(origin, cb) {
+    // same-origin / curl / server-to-server (no Origin header)
+    if (!origin) return cb(null, true)
+
+    if (allowedOrigins.has(origin) || allowRegexes.some(rx => rx.test(origin))) {
+      return cb(null, true)
+    }
+    return cb(new Error(`Not allowed by CORS: ${origin}`))
+  },
+  credentials: true, // ok even if you don’t use cookies
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 204
+}
+
+app.use(cors(corsOptions))
+// ensure preflights are answered
+app.options('*', cors(corsOptions))
+// --- END CORS ---
 
 app.use(morgan('dev'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
-
-// CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL?.split(',') || ['http://localhost:5173'] || ['https://petpals-fsd.netlify.app/'], 
-    credentials: true,
-    exposedHeaders: ['Authorization'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-)
 
 // Static uploads
 app.use('/uploads', express.static(
